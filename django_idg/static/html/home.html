@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Usuarios • CRUD (Django + DRF)</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #0f172a; /* slate-900 */ color: #e2e8f0; }
+    .card { border: 0; border-radius: 1rem; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+    .btn { border-radius: .8rem; }
+    .form-control, .form-select { border-radius: .7rem; }
+    .badge-pill { border-radius: 999px; }
+    .table thead th { border-bottom: 0; color: #94a3b8; text-transform: uppercase; font-size: .8rem; letter-spacing: .08em; }
+    a { text-decoration: none; }
+    .footer { color: #94a3b8; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <header class="mb-4 d-flex align-items-center justify-content-between">
+      <div>
+        <h1 class="h3 m-0">Gestión de Usuarios</h1>
+        <div class="footer">API: <code>/usuarios/</code> (DRF)</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-light" id="btnListar">
+          <span class="me-1">📄</span> Listar todos
+        </button>
+        <button class="btn btn-outline-light" id="btnLimpiar">
+          <span class="me-1">🧹</span> Limpiar
+        </button>
+      </div>
+    </header>
+
+    <div class="row g-4">
+      <!-- Formulario -->
+      <div class="col-lg-5">
+        <div class="card bg-dark-subtle text-dark">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Formulario</h2>
+            <div class="row g-3">
+
+              <div class="col-12">
+                <label class="form-label">ID (para GET/PUT/DELETE)</label>
+                <input id="f_id" type="number" class="form-control" placeholder="Ej. 1">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Username</label>
+                <input id="f_username" type="text" class="form-control" placeholder="jdoe" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Password</label>
+                <input id="f_password" type="password" class="form-control" placeholder="••••••" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">First name</label>
+                <input id="f_first_name" type="text" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Last name</label>
+                <input id="f_last_name" type="text" class="form-control" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input id="f_email" type="email" class="form-control" placeholder="correo@dominio.com" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Teléfono</label>
+                <input id="f_telefono" type="text" class="form-control" placeholder="3001234567" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Date Joined</label>
+                <input id="f_date_joined" type="datetime-local" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Last Login</label>
+                <input id="f_last_login" type="datetime-local" class="form-control">
+              </div>
+
+              <div class="col-12 d-grid gap-2 mt-2">
+                <button id="btnCrear" class="btn btn-primary">➕ Crear (POST)</button>
+                <button id="btnActualizar" class="btn btn-warning">✏️ Actualizar (PUT)</button>
+                <button id="btnObtener" class="btn btn-info text-dark">🔎 Obtener por ID (GET)</button>
+                <button id="btnEliminar" class="btn btn-danger">🗑️ Eliminar (DELETE)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3" id="status"></div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="col-lg-7">
+        <div class="card bg-dark-subtle text-dark">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h2 class="h5 m-0">Registros</h2>
+              <span class="badge text-bg-dark"><span id="count">0</span> resultados</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-middle" id="tabla">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Joined</th>
+                    <th>Login</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-4 footer">Hecho con Bootstrap • Funciona con tu API DRF</footer>
+  </div>
+
+  <script>
+    // ===== Utilidades =====
+    const API_BASE = "/usuarios/"; // Ajusta si montas la API bajo un prefijo
+
+    function showStatus(msg, type = "success") {
+      const el = document.getElementById("status");
+      el.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">${msg}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+    }
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function toISOStringNoTZ(dtLocalValue) {
+      if (!dtLocalValue) return null;
+      // dtLocalValue viene como "YYYY-MM-DDTHH:mm"
+      const d = new Date(dtLocalValue);
+      // Enviar en formato ISO sin zona para DRF ("YYYY-MM-DDTHH:mm:ss")
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      const ss = pad(d.getSeconds());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
+    }
+
+    function fromISOToLocalInput(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      // Para <input type="datetime-local">
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    function readForm() {
+      return {
+        username: document.getElementById('f_username').value || null,
+        password: document.getElementById('f_password').value || null,
+        first_name: document.getElementById('f_first_name').value || null,
+        last_name: document.getElementById('f_last_name').value || null,
+        email: document.getElementById('f_email').value || null,
+        telefono: document.getElementById('f_telefono').value || null,
+        date_joined: toISOStringNoTZ(document.getElementById('f_date_joined').value),
+        last_login: toISOStringNoTZ(document.getElementById('f_last_login').value)
+      };
+    }
+
+    function fillForm(u) {
+      document.getElementById('f_id').value = u.id ?? '';
+      document.getElementById('f_username').value = u.username ?? '';
+      document.getElementById('f_password').value = u.password ?? '';
+      document.getElementById('f_first_name').value = u.first_name ?? '';
+      document.getElementById('f_last_name').value = u.last_name ?? '';
+      document.getElementById('f_email').value = u.email ?? '';
+      document.getElementById('f_telefono').value = u.telefono ?? '';
+      document.getElementById('f_date_joined').value = fromISOToLocalInput(u.date_joined);
+      document.getElementById('f_last_login').value = fromISOToLocalInput(u.last_login);
+    }
+
+    function renderTable(data) {
+      const tbody = document.querySelector('#tabla tbody');
+      tbody.innerHTML = '';
+      data.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="badge text-bg-secondary">${u.id}</span></td>
+          <td><code>${u.username ?? ''}</code></td>
+          <td>${u.first_name ?? ''}</td>
+          <td>${u.last_name ?? ''}</td>
+          <td>${u.email ?? ''}</td>
+          <td>${u.telefono ?? ''}</td>
+          <td>${u.date_joined ? new Date(u.date_joined).toLocaleString() : ''}</td>
+          <td>${u.last_login ? new Date(u.last_login).toLocaleString() : ''}</td>
+        `;
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => fillForm(u));
+        tbody.appendChild(tr);
+      });
+      document.getElementById('count').textContent = data.length;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const csrftoken = getCookie('csrftoken');
+      const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(options.method)) {
+        headers['X-CSRFToken'] = csrftoken;
+      }
+      const res = await fetch(url, { credentials: 'same-origin', ...options, headers });
+      const text = await res.text();
+      let json;
+      try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
+      if (!res.ok) throw { status: res.status, data: json };
+      return json;
+    }
+
+    // ===== Acciones =====
+    async function listar() {
+      try {
+        const data = await apiFetch(API_BASE);
+        renderTable(data);
+        showStatus('Lista cargada correctamente.');
+      } catch (e) {
+        showStatus(`Error al listar (${e.status}): ${JSON.stringify(e.data)}`, 'danger');
+      }
+    }
+
+    async function crear() {
+      try {
+        const payload = readForm();
+        const data = await apiFetch(API_BASE, { method: 'POST', body: JSON.stringify(payload) });
+        fillForm(data);
+        await listar();
+        showStatus('Usuario creado con éxito.');
+      } catch (e) {
+        showStatus(`Error al crear (${e.status}): ${JSON.stringify(e.data)}`, 'danger');
+      }
+    }
+
+    async function obtener() {
+      const id = document.getElementById('f_id').value;
+      if (!id) return showStatus('Debes indicar un ID para buscar.', 'warning');
+      try {
+        const data = await apiFetch(`${API_BASE}${id}/`);
+        fillForm(data);
+        showStatus('Usuario obtenido.');
+      } catch (e) {
+        showStatus(`Error al obtener (${e.status}): ${JSON.stringify(e.data)}`, 'danger');
+      }
+    }
+
+    async function actualizar() {
+      const id = document.getElementById('f_id').value;
+      if (!id) return showStatus('Debes indicar un ID para actualizar.', 'warning');
+      try {
+        const payload = readForm();
+        const data = await apiFetch(`${API_BASE}${id}/`, { method: 'PUT', body: JSON.stringify(payload) });
+        fillForm(data);
+        await listar();
+        showStatus('Usuario actualizado.');
+      } catch (e) {
+        showStatus(`Error al actualizar (${e.status}): ${JSON.stringify(e.data)}`, 'danger');
+      }
+    }
+
+    async function eliminar() {
+      const id = document.getElementById('f_id').value;
+      if (!id) return showStatus('Debes indicar un ID para eliminar.', 'warning');
+      if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
+      try {
+        await apiFetch(`${API_BASE}${id}/`, { method: 'DELETE' });
+        document.getElementById('f_id').value = '';
+        showStatus('Usuario eliminado.');
+        await listar();
+      } catch (e) {
+        showStatus(`Error al eliminar (${e.status}): ${JSON.stringify(e.data)}`, 'danger');
+      }
+    }
+
+    // ===== Eventos =====
+    document.getElementById('btnListar').addEventListener('click', listar);
+    document.getElementById('btnLimpiar').addEventListener('click', () => fillForm({}));
+    document.getElementById('btnCrear').addEventListener('click', crear);
+    document.getElementById('btnObtener').addEventListener('click', obtener);
+    document.getElementById('btnActualizar').addEventListener('click', actualizar);
+    document.getElementById('btnEliminar').addEventListener('click', eliminar);
+
+    // Cargar lista inicial
+    listar();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
